@@ -4,17 +4,17 @@ from ray import tune # pylint: disable=import-error
 from ray.tune.logger import DEFAULT_LOGGERS, JsonLogger, CSVLogger # pylint: disable=import-error
 
 
-from action_dist_prac.policies.pg_trainer import PGTrainer
-from action_dist_prac.policies.pg_copula_trainer import PGCopulaTrainer
-from action_dist_prac.environments.latent_variable_gym_env_wrapper import LatentVariableGymEnvWrapper
-from action_dist_prac.environments.gaus_copula_gym_env_wrapper import GausCopulaGymEnvWrapper
-from action_dist_prac.utils.ray_logger import RayLogger
+from rl_copula_policy.policies.pg_trainer import PGTrainer
+from rl_copula_policy.policies.pg_copula_trainer import PGCopulaTrainer
+from rl_copula_policy.environments.latent_variable_gym_env_wrapper import LatentVariableGymEnvWrapper
+from rl_copula_policy.environments.gaus_copula_gym_env_wrapper import GausCopulaGymEnvWrapper
+from rl_copula_policy.utils.ray_logger import RayLogger
 
 # importing to ensure action distributions and models are registered with Ray's model catalog
-import action_dist_prac.action_distributions.discrete_action_distribution
-import action_dist_prac.action_distributions.gaussian_copula_action_distribution
-import action_dist_prac.models.mlp_model
-import action_dist_prac.models.rnn_model
+import rl_copula_policy.action_distributions.discrete_action_distribution
+import rl_copula_policy.action_distributions.gaussian_copula_action_distribution
+import rl_copula_policy.models.mlp_model
+import rl_copula_policy.models.rnn_model
 
 from ray.tune.logger import Logger, pretty_print
 

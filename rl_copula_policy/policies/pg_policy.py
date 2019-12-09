@@ -6,9 +6,9 @@ from ray.rllib.policy.tf_policy_template import build_tf_policy # pylint: disabl
 from ray.rllib.agents.trainer_template import build_trainer # pylint: disable=import-error
 from ray.rllib.agents.trainer import with_common_config # pylint: disable=import-error
 from ray.rllib.evaluation.postprocessing import Postprocessing # pylint: disable=import-error
-from action_dist_prac.utils.utils import reward_to_go, ConstantFunctor
-from action_dist_prac.utils.ray_utils import sample_batch_to_columnar_dict, make_seq_mask
-from action_dist_prac.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
+from rl_copula_policy.utils.utils import reward_to_go, ConstantFunctor
+from rl_copula_policy.utils.ray_utils import sample_batch_to_columnar_dict, make_seq_mask
+from rl_copula_policy.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
 
 SAMPLE_BATCH_REWARD_TO_GO_KEY = 'REWARD_TO_GOS'
 

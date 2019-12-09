@@ -1,16 +1,20 @@
-from ray.rllib.models.tf.tf_modelv2 import TFModelV2
-from ray.rllib.models import ModelCatalog
+from ray.rllib.models.tf.tf_modelv2 import TFModelV2 # pylint: disable=import-error
+from ray.rllib.models import ModelCatalog # pylint: disable=import-error
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense
-from tensorflow.keras import Model
-from action_dist_prac.utils.utils import make_mlp
+from tensorflow import keras
+from tensorflow.keras.layers import Input, Dense # pylint: disable=import-error
+from tensorflow.keras import Model # pylint: disable=import-error
+from rl_copula_policy.utils.utils import make_mlp
 
-class RNNModel(TFModelV2):
+class MLPModel(TFModelV2):
 
     def __init__(self, obs_space, action_space, num_outputs, 
             model_config, name):
         super(MLPModel, self).__init__(obs_space, action_space, num_outputs, 
                 model_config, name)
+        # store action space for use in action distribution
+        self.action_space = action_space
+
         custom_options = model_config['custom_options']
         num_layers = custom_options['num_layers']
         layer_size = custom_options['layer_size']
@@ -32,6 +36,7 @@ class RNNModel(TFModelV2):
         return flat_action_params, state
     
     def value_function(self):
+        # Note: self._value_out is initialised when forward is called
         return tf.reshape(self._value_out, [-1])
 
-ModelCatalog.register_custom_model("rnn_model", RNNModel)
+ModelCatalog.register_custom_model("mlp_model", MLPModel)

@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from gym import Env
 from gym.spaces import Dict, Box, Tuple
-from action_dist_prac.utils.gym_space_utils import convert_to_flat_tuple_space
+from rl_copula_policy.utils.gym_space_utils import convert_to_flat_tuple_space
 
 class GausCopulaGymEnvWrapper(Env):
     def __init__(self, config):

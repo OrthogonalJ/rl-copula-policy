@@ -4,7 +4,7 @@ from ray.tune.result import (NODE_IP, TRAINING_ITERATION, TIME_TOTAL_S,  # pylin
                              TIMESTEPS_TOTAL, EXPR_PARAM_FILE,
                              EXPR_PARAM_PICKLE_FILE, EXPR_PROGRESS_FILE,
                              EXPR_RESULT_FILE) 
-from action_dist_prac.policies.pg_policy import PGPolicy, get_custom_option
+from rl_copula_policy.policies.pg_policy import PGPolicy, get_custom_option
 
 def get_file_writer(trainer):
     if not hasattr(trainer, '_file_writer'):

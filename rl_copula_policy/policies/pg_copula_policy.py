@@ -1,9 +1,9 @@
 import tensorflow as tf
 from ray.rllib.policy.sample_batch import SampleBatch # pylint: disable=import-error
 from ray.rllib.evaluation.postprocessing import Postprocessing # pylint: disable=import-error
-from action_dist_prac.policies.pg_policy import PGPolicy, stats as pg_stats, policy_gradient_loss as pg_loss
-from action_dist_prac.utils.ray_utils import make_seq_mask
-from action_dist_prac.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
+from rl_copula_policy.policies.pg_policy import PGPolicy, stats as pg_stats, policy_gradient_loss as pg_loss
+from rl_copula_policy.utils.ray_utils import make_seq_mask
+from rl_copula_policy.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
 
 def compute_loss(policy, model, dist_class, train_batch):
     loss = pg_loss(policy, model, dist_class, train_batch)

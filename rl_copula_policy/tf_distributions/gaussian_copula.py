@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 from tensorflow_probability import bijectors as tfb
-from action_dist_prac.utils.utils import shape_list
+from rl_copula_policy.utils.utils import shape_list
 
 class GaussianCopula(tfd.MultivariateNormalTriL):
     def __init__(self, loc, scale_tril):

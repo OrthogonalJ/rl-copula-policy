@@ -9,10 +9,10 @@ import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 import tensorflow as tf
 
-from action_dist_prac.action_distributions.discrete_action_distribution import DiscreteActionDistribution
-from action_dist_prac.tf_distributions.gaussian_copula import GaussianCopula
-from action_dist_prac.tf_distributions.categorical import Categorical
-from action_dist_prac.utils.utils import slice_back, shape_list
+from rl_copula_policy.action_distributions.discrete_action_distribution import DiscreteActionDistribution
+from rl_copula_policy.tf_distributions.gaussian_copula import GaussianCopula
+from rl_copula_policy.tf_distributions.categorical import Categorical
+from rl_copula_policy.utils.utils import slice_back, shape_list
 
 # Constants
 MARGINAL_ENV_ACTION_SPACE_START_IDX = 2
