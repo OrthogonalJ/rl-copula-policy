@@ -2,3 +2,4 @@ data
 .vscode
 local
 **/__pycache__
+venv
