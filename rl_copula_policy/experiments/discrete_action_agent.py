@@ -23,22 +23,20 @@ if __name__ == '__main__':
     exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
     export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     results = tune.run(
-        # PGTrainer,
         PGCopulaTrainer,
         name=exp_name,
-        stop={'training_iteration': 11},
+        stop={'training_iteration': 100},
         local_dir=export_dir,
         loggers=DEFAULT_LOGGERS + (RayLogger,),
         config={
-            # 'env': env_name,
             'env': GausCopulaGymEnvWrapper,
             'output': export_dir,
             'output_compress_columns': [],
             'num_gpus': 0,
-            'num_workers': 1,#7,
+            'num_workers': 7,
             'lr': 0.0005,
-            'train_batch_size': 20,#1001,
-            'sample_batch_size': 20,#143,
+            'train_batch_size': 1001,
+            'sample_batch_size': 143,
             'gamma': 0.99,
             'seed': 10,
             'eager': False,
@@ -54,8 +52,7 @@ if __name__ == '__main__':
                     'layer_size': 64,
                     'activation': 'relu',
                     'reward_to_go': True,
-                    'use_vf_adv': True,
-                    #'tensorboard_logdir': './data'
+                    'use_vf_adv': True
                 }
             }
         }
