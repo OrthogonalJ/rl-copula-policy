@@ -26,7 +26,7 @@ def compute_loss(policy, model, dist_class, train_batch):
     policy._register_histogram_summary('action_logp', action_logps)
 
     latent_cdfs = action_dist._latent_dist.cdf(action_dist.extract_latent_sample(actions))
-    latent_cdfs = tf.unstack(latent_cdfs, axis=-1)
+    latent_cdfs = tf.unstack(latent_cdfs, axis=-1, num=action_dist.num_marginals)
     for i, cdf_val in enumerate(latent_cdfs):
         policy._register_histogram_summary('copula_std_gaus_cdf_dim_{}'.format(i), cdf_val)
     

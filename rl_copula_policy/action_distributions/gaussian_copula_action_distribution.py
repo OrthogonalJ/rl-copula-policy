@@ -31,7 +31,11 @@ class GaussianCopulaActionDistribution(ActionDistribution):
 
     @staticmethod
     def required_model_output_shape(action_space, model_config):
-        num_marginals = len(action_space) - 1
+        if not isinstance(action_space, gym_spaces.Tuple):
+            raise NotImplementedError('GaussianCopulaActionDistribution only supports Tuple action spaces')
+
+        num_marginals = len(action_space) - MARGINAL_ENV_ACTION_SPACE_START_IDX
+        #num_marginals = len(action_space) - 1
         num_marginal_params = 0
         for i in range(MARGINAL_ENV_ACTION_SPACE_START_IDX, len(action_space)):
             spec = choose_marginal_spec_for_action_space(action_space[i])
@@ -48,37 +52,27 @@ class GaussianCopulaActionDistribution(ActionDistribution):
     def __init__(self, inputs, model):
         super(GaussianCopulaActionDistribution, self).__init__(inputs, model)
         assert inputs.get_shape().ndims in [2, 3], 'inputs must be 2D or 3D'
-        # print('inputs:', inputs)
-        # print('model.action_space:', model.action_space)
+        print('inputs:', inputs)
+
         # NOTE: expected format is [copula_cdf_space, copula_latent_space, marginals...]
         marginal_spaces = model.action_space[MARGINAL_ENV_ACTION_SPACE_START_IDX : ]
-        # print('marginal_spaces:', marginal_spaces)
-        self._num_marginals = len(marginal_spaces)
+        self.num_marginals = len(marginal_spaces)
         
         self._init_latent_dist(self.inputs, next_unused_idx=0, 
-                num_marginals=self._num_marginals)
-        # print('latent_dist:', self._latent_dist)
+                num_marginals=self.num_marginals)
         
         self._marginal_dists = self._make_marginal_dists(marginal_spaces, self.inputs, 
                 next_unused_idx=self._marginal_input_start_idx())
-        # print('_marginal_dists:', self._marginal_dists)
 
         # hacky way of keeping track of indexes used to unpack flat action representation
-        self._flat_action_latent_start = self._num_marginals
-        self._flat_action_latent_end = self._flat_action_latent_start + self._num_marginals
+        self._flat_action_latent_start = self.num_marginals
+        self._flat_action_latent_end = self._flat_action_latent_start + self.num_marginals
 
         self._flat_action_marginals_start = self._flat_action_latent_end
-        self._flat_action_marginals_end = self._flat_action_marginals_start + self._num_marginals
-
-        
-        # self._marginal_dists = self._make_marginal_dists(marginal_spaces, self.inputs)
-        # self._num_marginals = len(marginal_spaces)
-        # self._init_latent_dist(self.inputs, next_unused_idx=self._num_marginal_params() - 1, 
-        #         num_marginals=self._num_marginals)
+        self._flat_action_marginals_end = self._flat_action_marginals_start + self.num_marginals
     
     def sample(self):
         latent_sample = self._latent_dist.sample() # shape [num_marginals]
-        # print('latent_sample:', latent_sample)
 
         if self.inputs.get_shape().ndims > 2:
             # if recurrent
@@ -88,18 +82,14 @@ class GaussianCopulaActionDistribution(ActionDistribution):
             # if not recurrent
             # add batch dim
             latent_sample = tf.reshape(latent_sample, [1, -1])
-        # print('latent_sample after reshape:', latent_sample)
 
         marginal_cdf_vals = [latent_sample[..., i] for i in range(len(self._marginal_dists))] 
-        # print('marginal_cdf_vals:', marginal_cdf_vals)
         marginal_samples = [dist.quantile(cdf_val) for cdf_val, dist 
                 in zip(marginal_cdf_vals, self._marginal_dists)]
-        # print('marginal_samples:', marginal_samples)
         
-        # Ensuring that event dim is defined (otherwise self._latent_dist.cdf() fails when run in eager-tracing mode)
-        latent_sample = tf.reshape(latent_sample, shape_list(latent_sample)[:-1] + [self._num_marginals])
-        # marginal_variances = self.marginal_variances(as_list=False)
-        # latent_sample_standarised = latent_sample / marginal_variances
+        # Ensuring that event dim is defined (otherwise self._latent_dist.cdf() fails when run 
+        # in non-eager or eager-tracing mode)
+        latent_sample = tf.reshape(latent_sample, shape_list(latent_sample)[:-1] + [self.num_marginals])
         copula_cdf_vals = self._latent_dist.cdf(latent_sample)
 
         self._last_sample_logp = self._logp(latent_sample, marginal_samples)
@@ -108,8 +98,6 @@ class GaussianCopulaActionDistribution(ActionDistribution):
     def logp(self, action):
         latent_variable = self.extract_latent_sample(action)
         base_actions = self.extract_marginal_samples(action)
-        #latent_variable = action[..., :self._num_marginals]
-        #base_actions = [action[..., i] for i in range(self._num_marginals, self._num_marginals + self._num_marginals)]
         logp = self._logp(latent_variable, base_actions)
         return logp
     
@@ -128,6 +116,9 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         if seperate_into_list:
             return [action[..., i] for i in range(self._flat_action_latent_start, self._flat_action_latent_end)]
         return action[..., self._flat_action_latent_start:self._flat_action_latent_end]
+        # last_dim_size = self._flat_action_latent_end - self._flat_action_latent_start
+        # latent_sample_shape = shape_list(latent_sample)[:-1] + [last_dim_size]
+        # latent_sample = tf.reshape(latent_sample, latent_sample_shape)
     
     def extract_marginal_samples(self, action):
         return [action[..., i] for i in range(self._flat_action_marginals_start, self._flat_action_marginals_end)]
@@ -137,35 +128,24 @@ class GaussianCopulaActionDistribution(ActionDistribution):
     
     def marginal_variances(self, as_list=True):
         cov_mat = self.covariance_matrix()
-        variances = [cov_mat[..., i, i] for i in range(self._num_marginals)]
+        variances = [cov_mat[..., i, i] for i in range(self.num_marginals)]
         if as_list:
             return variances
         return tf.concat(variances, axis=-1)
 
     def marginal_pair_covariances(self):
         cov_mat = self.covariance_matrix()
-        pairs = itertools.combinations(range(self._num_marginals), 2)
+        pairs = itertools.combinations(range(self.num_marginals), 2)
         return [( (i, j), cov_mat[..., i, j] ) for i, j in pairs]
     
     def _init_latent_dist(self, flat_action_params, next_unused_idx, num_marginals):
         batch_time_shape = shape_list(flat_action_params)[:-1]
         latent_means = tf.zeros(shape=batch_time_shape + [num_marginals], dtype=tf.float32)
 
-        num_covar_params = GaussianCopulaActionDistribution.num_covariance_params(self._num_marginals)
+        num_covar_params = GaussianCopulaActionDistribution.num_covariance_params(self.num_marginals)
         latent_covariance_vec = self._extract_params_from_flat_tensor(flat_action_params, num_covar_params, next_unused_idx)
-        
-        # pairs = itertools.combinations(self._num_marginals, 2)
-        # cov_mat_shape = shape_list(latent_covariance_vec)[:-1] + [self._num_marginals, self._num_marginals]
-        # covariance_mat = tf.zeros(shape=cov_mat_shape)
-        # for i, pair in enumerate(pairs):
-        #     covariance_mat[..., pair[0], pair[1]] = latent_covariance_vec[..., i]
-        # for i in range(self._num_marginals):
-        #     covariance_mat[..., i, i] = 1.0
-        
-        # self._latent_covariance_tril = 
-
         self._latent_covariance_tril = tfp.math.fill_triangular(latent_covariance_vec, name='latent_covariance_tril')
-
+        
         self._latent_dist = GaussianCopula(latent_means, self._latent_covariance_tril)
     
     def _make_marginal_dists(self, action_space, flat_action_params, next_unused_idx=0):
@@ -181,7 +161,7 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return marginal_dists
     
     def _marginal_input_start_idx(self):
-        return self._num_marginals
+        return self.num_marginals
 
     def _logp(self, latent_variable, base_actions):
         latent_logp = self._latent_dist.log_prob(latent_variable)

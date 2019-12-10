@@ -12,6 +12,9 @@ class TFSummaryRegisterMixin:
         return self._tf_summary_input_register
     
     def _register_tf_summary_input(self, name, tensor, summary_type):
+        if not tf.executing_eagerly():
+            return
+        
         # inputs_map_for_type = self._tf_summary_input_register[summary_type]
         #if name in inputs_map_for_type:
             # print('WARNING: TF summary input for type {} with name {} already exists and will overwritten'.format(summary_type, name))

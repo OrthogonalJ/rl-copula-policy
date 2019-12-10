@@ -2,6 +2,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
 
+def placeholder_like(array):
+    tensor_shape = [None] * len(array.shape)
+    placeholder = tf.compat.v1.placeholder(shape=tensor_shape, dtype=tf.as_dtype(array.dtype))
+    return placeholder
+
 def shape_list(tensor):
     tensor_shape = tf.shape(tensor)
     return [tensor_shape[i] for i in range(tensor.get_shape().ndims)]

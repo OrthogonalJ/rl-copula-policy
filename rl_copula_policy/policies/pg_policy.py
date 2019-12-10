@@ -24,9 +24,6 @@ DEFAULT_CUSTOM_OPTIONS = {
     'vf_loss_coef': 1.0
 }
 
-# def setup_mixins(policy, obs_space, action_space, config):
-#     TFSummaryRegisterMixin.__init__(policy)
-
 def get_custom_option(policy, key):
     custom_options = policy.config['model']['custom_options']
     if key in DEFAULT_CUSTOM_OPTIONS.keys():
@@ -43,16 +40,9 @@ def policy_gradient_loss(policy, model, dist_class, train_batch):
     seq_lens = train_batch['seq_lens'] if 'seq_lens' in train_batch else tf.ones_like(advantages)
 
     flat_action_params, state = model.from_batch(train_batch)
-    # print('flat_action_params:', flat_action_params)
-    # print('vf_preds:', vf_preds)
     mask = make_seq_mask(seq_lens, advantages, is_stateful=not not state)
 
     action_dist = dist_class(flat_action_params, model)
-    #self._last_action_dist = action_dist
-    
-    #action_logp = -action_dist.logp(actions)
-    # policy._register_histogram_summary('action_logp', action_logp)
-    #policy._loss_action_logp = action_logp
 
     policy_loss = -action_dist.logp(actions) * advantages
 
@@ -94,8 +84,6 @@ def extra_action_fetches(policy):
     return { SampleBatch.VF_PREDS: policy.model.value_function() }
 
 def stats(policy, train_batch):
-    # print('STATS train_batch:', train_batch)
-    # print('STATS policy._loss_action_logp:', policy._loss_action_logp)
     stats =  {
         'action_logp_min': tf.reduce_min(train_batch[ACTION_LOGP]),
         'action_logp_max': tf.reduce_max(train_batch[ACTION_LOGP]),
@@ -109,7 +97,5 @@ PGPolicy = build_tf_policy(
     get_default_config=ConstantFunctor(DEFAULT_CONFIG),
     postprocess_fn=postprocess_sample_batch,
     extra_action_fetches_fn=extra_action_fetches,
-    stats_fn=stats,
-    #before_loss_init=setup_mixins,
-    #mixins=[TFSummaryRegisterMixin]
+    stats_fn=stats
 )

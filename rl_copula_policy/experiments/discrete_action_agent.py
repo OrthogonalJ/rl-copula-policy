@@ -16,42 +16,38 @@ import rl_copula_policy.action_distributions.gaussian_copula_action_distribution
 import rl_copula_policy.models.mlp_model
 import rl_copula_policy.models.rnn_model
 
-from ray.tune.logger import Logger, pretty_print
-
-class DummyLogger(Logger):
-    def on_result(self, result):
-        pass
-        # print('result:', result)
-
 if __name__ == '__main__':
     ray.init()
     env_name = 'ReversedAddition3-v0'
-    exp_name = 'gaussian_copula_v2_{}'.format(env_name)
+    model_name = 'rnn_model'
+    exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
     export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     results = tune.run(
+        # PGTrainer,
         PGCopulaTrainer,
         name=exp_name,
-        stop={'training_iteration': 100},
+        stop={'training_iteration': 11},
         local_dir=export_dir,
-        # loggers=(JsonLogger, CSVLogger, RayLogger),
         loggers=DEFAULT_LOGGERS + (RayLogger,),
         config={
+            # 'env': env_name,
             'env': GausCopulaGymEnvWrapper,
             'output': export_dir,
             'output_compress_columns': [],
             'num_gpus': 0,
-            'num_workers': 7,
+            'num_workers': 1,#7,
             'lr': 0.0005,
-            'train_batch_size': 1001,
-            'sample_batch_size': 143,
+            'train_batch_size': 20,#1001,
+            'sample_batch_size': 20,#143,
             'gamma': 0.99,
             'seed': 10,
-            'eager': True,
+            'eager': False,
             'env_config': {
                 'env_name': env_name
             },
             'model': {
-                'custom_model': 'mlp_model',
+                'custom_model': model_name,
+                'max_seq_len': 20,
                 'custom_action_dist': 'gaussian_copula_action_distribution',
                 'custom_options': {
                     'num_layers': 3,
