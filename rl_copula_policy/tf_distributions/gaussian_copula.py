@@ -11,7 +11,9 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
             covariance_matrix(tensor)
         """
         scale_mat = tf.matmul(scale_tril, scale_tril, transpose_b=True)
-        diagonal = tf.ones(shape=shape_list(scale_mat)[:-1])
+        print_op = tf.compat.v1.print('scale_mat:', scale_mat)
+        with tf.control_dependencies([print_op]):
+            diagonal = tf.ones(shape=shape_list(scale_mat)[:-1])
         scale_tril = tf.linalg.set_diag(tf.linalg.cholesky(scale_mat), diagonal)
         super(GaussianCopula, self).__init__(loc , scale_tril, validate_args=True)
     
