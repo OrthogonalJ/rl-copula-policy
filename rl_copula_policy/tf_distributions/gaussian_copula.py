@@ -17,15 +17,23 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         # scale_tril = tf.linalg.set_diag(tf.linalg.cholesky(scale_mat), diagonal)
         self._loc = loc
         self._scale_tril = scale_tril
-        super(GaussianCopula, self).__init__(loc , scale_tril, validate_args=True)
-    
+        super(GaussianCopula, self).__init__(loc, scale_tril, validate_args=True)
+
+    def sample(self):
+        sample = super(GaussianCopula, self).sample()
+        print('Gaussian Copula sample:', sample)
+        print('Gaussian Copula stddev:', self._stddev())
+        #sample = sample / self._stddev()
+        return self._standardize_value(sample)
+     
     def cdf(self, value):
         # print('self._variances():', self._variances())
         # print('self._loc:', self._loc)
-        # normal_dist = tfd.Normal(loc=self._loc, scale=self._variances())
-        # cdf_vals = normal_dist.cdf(value)
+        #normal_dist = tfd.Normal(loc=self._loc, scale=self._variances())
+        #cdf_vals = normal_dist.cdf(value)
         
-        std_normal_value = (value - self._loc) / self._stddev()
+        std_normal_value = self._standardize_value(value)
+        #std_normal_value = (value - self._loc) / self._stddev()
         
         normal_cdf = tfb.NormalCDF()
         value_parts = tf.unstack(std_normal_value, axis=-1)
@@ -38,6 +46,9 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         cdf_vals = tf.reshape(cdf_vals, non_data_shape + [num_components])
 
         return cdf_vals
+
+    def _standardize_value(self, value):
+        return (value - self._loc) / self._stddev()
 
     def _variances(self):
         # Reverse the cholesky decomposition
