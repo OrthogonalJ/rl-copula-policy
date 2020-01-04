@@ -1,7 +1,5 @@
 import numpy as np
-# import tensorflow as tf
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 from tensorflow_probability import bijectors as tfb
@@ -9,26 +7,6 @@ from rl_copula_policy.utils.utils import shape_list
 
 class GaussianCopula(tfd.MultivariateNormalTriL):
     
-    # def __init__(self, loc, scale_inv_triu, exponentiate_diag=False):
-    #     """
-    #     Args:
-    #         loc(tensor): Means
-    #         scale_tril(tensor): Lower triangular cholesky factor for the covariance matrix. 
-    #             Note that the diagonal elements (latent marginal variances) are NOT IGNORED
-    #             but all calculations behave as if the diagonals of the covariance matrix are 
-    #             set to 1 (by standardising samples to have marginal loc 0 and stddev 1).
-    #     """
-    #     self._loc = loc
-        
-    #     if exponentiate_diag:
-    #         diagonal = tf.math.exp(tf.linalg.diag_part(scale_inv_triu))
-    #         scale_inv_triu = tf.linalg.set_diag(scale_inv_triu, diagonal)
-
-    #     scale_inv_tril = tf.linalg.matrix_transpose(scale_inv_triu)
-    #     print('scale_inv_tril:', scale_inv_tril)
-    #     self._scale_tril = tfb.CholeskyToInvCholesky().forward(scale_inv_tril)
-    #     super(GaussianCopula, self).__init__(self._loc, self._scale_tril, validate_args=True)
-
     def __init__(self, loc, scale_tril):
         """
         Args:
@@ -45,15 +23,12 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
     def sample(self, sample_shape=(), seed=None, name='sample', **kwargs):
         sample = super(GaussianCopula, self).sample(sample_shape, seed, name, **kwargs)
         return sample
-        # return self._standardize_value(sample)
     
     def prob(self, std_value):
         cov_mat = self._cov_matrix()
-        #cov_mat = self._standardized_cov_matrix()
         cov_mat_inv = tf.linalg.inv(cov_mat)
         cov_det = tf.linalg.det(cov_mat)
         n = self._num_dims()
-        #n = tf.shape(self._loc)[-1]
         z = 1 / (tf.pow(2 * np.pi, tf.cast(n / 2, tf.float32)) * tf.math.sqrt(cov_det))
         print('z:', z)
 
@@ -63,15 +38,14 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         deviations_trans = value_trans - means_trans
         # has shape [... leading dims, n, 1] (batch of column vectors)
         value_col_vec = tf.linalg.matrix_transpose(value_trans)
-        #value_col_vec = tf.linalg.matrix_transpose(std_value)
         means = tf.linalg.matrix_transpose(means_trans)
         deviations = value_col_vec - means
-        print('deviations_trans: ', deviations_trans.shape)
-        print('cov_mat_inv:', cov_mat_inv.shape)
-        print('deviations:', deviations.shape)
+        # print('deviations_trans: ', deviations_trans.shape)
+        # print('cov_mat_inv:', cov_mat_inv.shape)
+        # print('deviations:', deviations.shape)
 
-        print('deviations_trans * cov_mat_inv:', tf.matmul(deviations_trans, cov_mat_inv).shape)
-        print('(deviations_trans * cov_mat_inv)*deviations:', tf.matmul(tf.matmul(deviations_trans, cov_mat_inv), deviations).shape)
+        # print('deviations_trans * cov_mat_inv:', tf.matmul(deviations_trans, cov_mat_inv).shape)
+        # print('(deviations_trans * cov_mat_inv)*deviations:', tf.matmul(tf.matmul(deviations_trans, cov_mat_inv), deviations).shape)
 
         exp_operand = -0.5 * tf.matmul(
                 tf.matmul(deviations_trans, cov_mat_inv), deviations)
@@ -84,15 +58,8 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         return tf.math.log(self.prob(std_value)) 
 
     def cdf(self, value):
-        #value = self._standardize_value(value)
-
         marginal_normal_dist = tfd.Normal(loc=self._loc, scale=self._stddev())
         cdf_vals = marginal_normal_dist.cdf(value)
-        print('GaussianCopula.cdf$cdf_vals:', cdf_vals)
-        # normal_cdf = tfb.NormalCDF()
-        #value_parts = tf.unstack(value, axis=-1)
-        # cdf_vals = [normal_cdf.forward(value_part) for value_part in value_parts]
-        #cdf_vals = tf.concat(cdf_vals, axis=-1)
         
         # Ensure that output has same leading dims as value arg
         non_data_shape = shape_list(value)[:-1]
@@ -100,21 +67,6 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         cdf_vals = tf.reshape(cdf_vals, non_data_shape + [num_components])
 
         return cdf_vals
-
-    # def cdf(self, value):
-    #     value = self._standardize_value(value)
-
-    #     normal_cdf = tfb.NormalCDF()
-    #     value_parts = tf.unstack(value, axis=-1)
-    #     cdf_vals = [normal_cdf.forward(value_part) for value_part in value_parts]
-    #     cdf_vals = tf.concat(cdf_vals, axis=-1)
-        
-    #     # Ensure that output has same leading dims as value arg
-    #     non_data_shape = shape_list(value)[:-1]
-    #     num_components = shape_list(value)[-1]
-    #     cdf_vals = tf.reshape(cdf_vals, non_data_shape + [num_components])
-
-    #     return cdf_vals
 
     def _num_dims(self):
         return tf.shape(self._loc)[-1]
@@ -133,7 +85,6 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         return tf.matmul(self._scale_tril, self._scale_tril, transpose_b=True)
 
     def _variances(self):
-        #cov_mat = tf.matmul(self._scale_tril, self._scale_tril, transpose_b=True)
         return tf.linalg.diag_part(self._cov_matrix())
     
     def _stddev(self):
