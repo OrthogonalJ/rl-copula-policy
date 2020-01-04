@@ -13,6 +13,7 @@ from rl_copula_policy.action_distributions.discrete_action_distribution import D
 from rl_copula_policy.tf_distributions.gaussian_copula import GaussianCopula
 from rl_copula_policy.tf_distributions.categorical import Categorical
 from rl_copula_policy.utils.utils import slice_back, shape_list
+from rl_copula_policy.utils.covariance_matrix_utils import tfp_scale_tril
 
 # Constants
 MARGINAL_ENV_ACTION_SPACE_START_IDX = 2
@@ -52,7 +53,8 @@ class GaussianCopulaActionDistribution(ActionDistribution):
     def __init__(self, inputs, model):
         super(GaussianCopulaActionDistribution, self).__init__(inputs, model)
         assert inputs.get_shape().ndims in [2, 3], 'inputs must be 2D or 3D'
-        print('inputs:', inputs)
+        # print('inputs shape:', self.inputs.shape)
+        # print('inputs:', inputs)
 
         # NOTE: expected format is [copula_cdf_space, copula_latent_space, marginals...]
         marginal_spaces = model.action_space[MARGINAL_ENV_ACTION_SPACE_START_IDX : ]
@@ -91,14 +93,18 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         # in non-eager or eager-tracing mode)
         latent_sample = tf.reshape(latent_sample, shape_list(latent_sample)[:-1] + [self.num_marginals])
         copula_cdf_vals = self._latent_dist.cdf(latent_sample)
+        # print('copula_cdf_vals shape:', copula_cdf_vals.shape)
 
         self._last_sample_logp = self._logp(latent_sample, marginal_samples)
-        return TupleActions([copula_cdf_vals, latent_sample] + marginal_samples)
+        result = TupleActions([copula_cdf_vals, latent_sample] + marginal_samples)
+        # print('Sampling result:', [copula_cdf_vals, latent_sample] + marginal_samples)
+        return result
 
     def logp(self, action):
         latent_variable = self.extract_latent_sample(action)
         base_actions = self.extract_marginal_samples(action)
         logp = self._logp(latent_variable, base_actions)
+        # print('logp:', logp.shape)
         return logp
     
     def logp_parts(self, action):
@@ -107,6 +113,7 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return self._logp_parts(latent_variable, base_actions)
     
     def sampled_action_logp(self):
+        # print('self._last_sample_logp:', self._last_sample_logp.shape)
         return self._last_sample_logp
 
     def entropy(self):
@@ -124,7 +131,8 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return [action[..., i] for i in range(self._flat_action_marginals_start, self._flat_action_marginals_end)]
 
     def covariance_matrix(self):
-        return tf.matmul(self._latent_covariance_tril, self._latent_covariance_tril, transpose_b=True)
+        return self._latent_dist.cov_matrix()
+        #return tf.matmul(self._latent_covariance_tril, self._latent_covariance_tril, transpose_b=True)
     
     def marginal_variances(self, as_list=True):
         cov_mat = self.covariance_matrix()
@@ -141,10 +149,13 @@ class GaussianCopulaActionDistribution(ActionDistribution):
     def _init_latent_dist(self, flat_action_params, next_unused_idx, num_marginals):
         batch_time_shape = shape_list(flat_action_params)[:-1]
         latent_means = tf.zeros(shape=batch_time_shape + [num_marginals], dtype=tf.float32)
+        # print('latent_means.shape:', latent_means.shape)
 
         num_covar_params = GaussianCopulaActionDistribution.num_covariance_params(self.num_marginals)
         latent_covariance_vec = self._extract_params_from_flat_tensor(flat_action_params, num_covar_params, next_unused_idx)
-        self._latent_covariance_tril = tfp.math.fill_triangular(latent_covariance_vec, name='latent_covariance_tril')
+        self._latent_covariance_tril = tfp_scale_tril(latent_covariance_vec)
+        # print('self._latent_covariance_tril:', self._latent_covariance_tril)
+        # self._latent_covariance_tril = tfp.math.fill_triangular(latent_covariance_vec, name='latent_covariance_tril')
         
         self._latent_dist = GaussianCopula(latent_means, self._latent_covariance_tril)
     
@@ -165,10 +176,14 @@ class GaussianCopulaActionDistribution(ActionDistribution):
 
     def _logp(self, latent_variable, base_actions):
         latent_logp = self._latent_dist.log_prob(latent_variable)
+        # print('_logp$latent_logp:', latent_logp.shape)
         total_marginal_logp = 0
         for action, dist in zip(base_actions, self._marginal_dists):
             total_marginal_logp += dist.log_prob(action)
-        return latent_logp + total_marginal_logp
+        # print('_logp$total_marginal_logp:', total_marginal_logp.shape)
+        total_logp = latent_logp + total_marginal_logp
+        # print('_logp$total_logp:', total_logp.shape)
+        return total_logp
 
     def _logp_parts(self, latent_variable, base_actions):
         latent_logp = self._latent_dist.log_prob(latent_variable)

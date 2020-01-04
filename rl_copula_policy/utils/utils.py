@@ -1,6 +1,13 @@
 import numpy as np
+import scipy as sp
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
+
+def flat_triangular_matrix_size(num_dims):
+    """
+    Returns: Number of elements required to construct an triangular matrix with shape [num_dims, num_dims]
+    """
+    return num_dims + sp.special.comb(num_dims, 2, exact=True)
 
 def placeholder_like(array):
     tensor_shape = [None] * len(array.shape)

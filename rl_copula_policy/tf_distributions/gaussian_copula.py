@@ -22,12 +22,12 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         return sample
     
     def prob(self, std_value):
-        cov_mat = self._cov_matrix()
+        cov_mat = self.cov_matrix()
         cov_mat_inv = tf.linalg.inv(cov_mat)
         cov_det = tf.linalg.det(cov_mat)
         n = self._num_dims()
         z = 1 / (tf.pow(2 * np.pi, tf.cast(n / 2, tf.float32)) * tf.math.sqrt(cov_det))
-        # print('z:', z)
+        # print('z:', z.shape)
 
         # make shape [...leading dims, 1, n] (batch of row vectors)
         value_trans = tf.expand_dims(std_value, axis=-2)
@@ -47,23 +47,31 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         exp_operand = -0.5 * tf.matmul(
                 tf.matmul(deviations_trans, cov_mat_inv), deviations)
         # Make batch of scalars
-        exp_operand = tf.squeeze(exp_operand)
+        exp_operand = tf.reshape(exp_operand, shape_list(z))
+        #exp_operand = tf.squeeze(exp_operand)
         density = z * tf.math.exp(exp_operand)
+        # print('GaussianCopula.prob$ density:', density.shape)
         return density
 
     def log_prob(self, std_value):
         return tf.math.log(self.prob(std_value)) 
 
     def cdf(self, value):
+        # print('gaussian_copula.cdf value shape:', value.shape)
         marginal_normal_dist = tfd.Normal(loc=self._loc, scale=self._stddev())
         cdf_vals = marginal_normal_dist.cdf(value)
+        # print('GaussianCopula.cdf$ cdf_vals before reshape:', cdf_vals.shape)
         
         # Ensure that output has same leading dims as value arg
-        non_data_shape = shape_list(value)[:-1]
-        num_components = shape_list(value)[-1]
-        cdf_vals = tf.reshape(cdf_vals, non_data_shape + [num_components])
-
+        # non_data_shape = shape_list(value)[:-1]
+        # num_components = shape_list(value)[-1]
+        # cdf_vals = tf.reshape(cdf_vals, non_data_shape + [num_components])
+        # print('gaussian_copula.cdf cdf_vals shape:', cdf_vals.shape)
         return cdf_vals
+
+    def cov_matrix(self):
+        # Reverse the cholesky decomposition
+        return tf.matmul(self._scale_tril, self._scale_tril, transpose_b=True)
 
     def _num_dims(self):
         return tf.shape(self._loc)[-1]
@@ -72,17 +80,13 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         return (value - self._loc) / self._stddev()
 
     def _standardized_cov_matrix(self):
-        cov_matrix = self._cov_matrix()
+        cov_matrix = self.cov_matrix()
         diagonal = tf.ones(shape=shape_list(self._loc))
         std_cov_matrix = tf.linalg.set_diag(cov_matrix, diagonal)
         return std_cov_matrix
-        
-    def _cov_matrix(self):
-        # Reverse the cholesky decomposition
-        return tf.matmul(self._scale_tril, self._scale_tril, transpose_b=True)
-
+    
     def _variances(self):
-        return tf.linalg.diag_part(self._cov_matrix())
+        return tf.linalg.diag_part(self.cov_matrix())
     
     def _stddev(self):
         return tf.math.sqrt(self._variances())

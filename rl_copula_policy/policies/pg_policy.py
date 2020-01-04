@@ -31,7 +31,7 @@ def get_custom_option(policy, key):
     return custom_options[key]
 
 def policy_gradient_loss(policy, model, dist_class, train_batch):
-    print('COMPUTING PG POLICY LOSS')
+    # print('COMPUTING PG POLICY LOSS')
     vf_loss_coef = get_custom_option(policy, 'vf_loss_coef')
     actions = train_batch[SampleBatch.ACTIONS]
     advantages = train_batch[Postprocessing.ADVANTAGES]

@@ -65,7 +65,7 @@ class RNNModel(RecurrentTFModelV2):
     
     @override(RecurrentTFModelV2)
     def forward_rnn(self, inputs, state, seq_lens):
-        print('forward_rnn$seq_lens:', seq_lens)
+        # print('forward_rnn$seq_lens:', seq_lens)
         model_out, self._value_out, h, c = self.base_model([inputs, seq_lens] + state)
         return model_out, [h, c]
 
