@@ -4,10 +4,17 @@ import tensorflow_probability as tfp
 #### PARAMETERISATIONS ####
 
 def tfp_scale_tril(flat_scale, **kwargs):
+    """
+    Opinionated TF approach to creating lower triangular cholesky factor for a symmetric positive definite matrix
+    """
     kwargs['validate_args'] = kwargs.get('validate_args', True)
     return tfp.bijectors.ScaleTriL(**kwargs).forward(flat_scale)
 
 def unit_row_norm_pos_def_tril(flat_scale, **kwargs):
+    """
+    Lower triangular matrix that is guaranteed to a lower triangular cholesky factor for a symmetric positive definite matrix 
+    by normalising to rows so they sum to 1.
+    """
     kwargs['validate_args'] = kwargs.get('validate_args', True)
     return tfp.bijectors.CorrelationCholesky(**kwargs).forward(flat_scale)
 
