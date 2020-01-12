@@ -47,8 +47,9 @@ if __name__ == '__main__':
                 'env_name': env_name
             },
             'model': {
+                'use_lstm': True,
                 'custom_model': model_name,
-                'max_seq_len': 20,
+                'max_seq_len': 200,
                 # 'custom_action_dist': 'gaussian_copula_action_distribution',
                 'custom_options': {
                     'num_layers': 3,
