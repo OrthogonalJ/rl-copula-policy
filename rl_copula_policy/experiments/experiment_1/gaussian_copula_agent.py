@@ -1,20 +1,12 @@
-import logging
-import datetime
 import os
-import copy
-from collections import deque
+import argparse
 
 from sklearn.model_selection import ParameterGrid
 import ray # pylint: disable=import-error
-from ray import tune # pylint: disable=import-error
-from ray.tune.logger import DEFAULT_LOGGERS, JsonLogger, CSVLogger, pretty_print # pylint: disable=import-error
 
-
-from rl_copula_policy.policies.pg_trainer import PGTrainer
 from rl_copula_policy.policies.pg_copula_trainer import PGCopulaTrainer
-from rl_copula_policy.environments.latent_variable_gym_env_wrapper import LatentVariableGymEnvWrapper
 from rl_copula_policy.environments.gaus_copula_gym_env_wrapper import GausCopulaGymEnvWrapper
-from rl_copula_policy.utils.ray_logger import RayLogger
+from rl_copula_policy.experiments.experiment_utils import current_timestamp, run_experiment_repeatedly, merge_configs
 
 # importing to ensure action distributions and models are registered with Ray's model catalog
 import rl_copula_policy.action_distributions.discrete_action_distribution
@@ -22,70 +14,21 @@ import rl_copula_policy.action_distributions.gaussian_copula_action_distribution
 import rl_copula_policy.models.mlp_model
 import rl_copula_policy.models.rnn_model
 
-def current_timestamp():
-    return datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-
-def run_experiment(exp_name, trainable, num_iter, export_dir, config):
-    results = tune.run(
-        trainable,
-        name=exp_name,
-        stop={'training_iteration': num_iter},
-        local_dir=export_dir,
-        loggers=DEFAULT_LOGGERS + (RayLogger,),
-        config=config
-    )
-    return results
-
-def run_experiment_repeatedly(exp_name, trainable, num_iter, base_export_dir, config, seeds):
-    if not os.path.isdir(base_export_dir):
-        os.makedirs(base_export_dir)
-        # Create empyty flag file to tell consumers that this directory contains
-        # results for multiple seeds
-        open(os.path.join(base_export_dir, '.MULTIPLE_SEEDS'), 'a').close()
-    
-    results = []
-    for seed in seeds:
-        current_config = copy.deepcopy(config)
-        current_config['seed'] = seed
-        current_name = '{}_seed{}'.format(exp_name, seed)
-        current_export_dir = os.path.join(base_export_dir, current_name)
-        exp_results = run_experiment(current_name, trainable, num_iter, 
-                current_export_dir, current_config)
-        results.append(exp_results)
-    
-    return results
-
-
-def nested_dict_put(root_dict, key, value):
-    key_parts = deque(key.split('.'))
-    dict_to_mutate = root_dict
-    while len(key_parts) > 1:
-        current_key = key_parts.popleft()
-
-        if not current_key in dict_to_mutate:
-            dict_to_mutate[current_key] = {}
-        
-        dict_to_mutate = dict_to_mutate[current_key]
-    dict_to_mutate[key_parts.popleft()] = value
-
-def merge_configs(base_config, new_config):
-    merged_config = copy.deepcopy(base_config)
-    for key_path, value in new_config.items():
-        nested_dict_put(merged_config, key_path, value)
-    return merged_config
-
-
 if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('--export_dir', default='./data/experiment_1')
+    args = arg_parser.parse_args()
+
     ray.init()
     # env_name = 'ReversedAddition3-v0'
     model_name = 'rnn_model'
-    base_export_dir = './data/gaussian_copula_v3_{}'.format(current_timestamp())
+    base_export_dir = '{}/gaussian_copula_v3_{}'.format(args.export_dir, current_timestamp())
     os.makedirs(base_export_dir)
 
     # exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
     # export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     seeds = [10, 21, 42]
-    num_iter = 200
+    num_iter = 1
     base_config = {
         'env': GausCopulaGymEnvWrapper,
         # 'output': export_dir,
