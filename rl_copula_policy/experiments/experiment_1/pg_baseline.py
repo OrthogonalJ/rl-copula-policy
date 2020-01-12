@@ -21,16 +21,18 @@ if __name__ == '__main__':
     env_name = 'ReversedAddition3-v0'
     # model_name = 'mlp_model'
     model_name = 'rnn_model'
-    exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
+    exp_name = 'pg_baseline_{}_{}'.format(model_name, env_name)
     export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     results = tune.run(
-        PGCopulaTrainer,
+        'PG',
+        # PGCopulaTrainer,
         name=exp_name,
         stop={'training_iteration': 100},
         local_dir=export_dir,
         loggers=DEFAULT_LOGGERS + (RayLogger,),
         config={
-            'env': GausCopulaGymEnvWrapper,
+            'env': env_name,
+            # 'env': GausCopulaGymEnvWrapper,
             'output': export_dir,
             'output_compress_columns': [],
             'num_gpus': 0,
@@ -45,9 +47,10 @@ if __name__ == '__main__':
                 'env_name': env_name
             },
             'model': {
+                'use_lstm': True,
                 'custom_model': model_name,
-                'max_seq_len': 20,
-                'custom_action_dist': 'gaussian_copula_action_distribution',
+                'max_seq_len': 200,
+                # 'custom_action_dist': 'gaussian_copula_action_distribution',
                 'custom_options': {
                     'num_layers': 3,
                     'layer_size': 64,
