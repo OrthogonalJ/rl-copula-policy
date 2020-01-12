@@ -24,7 +24,8 @@ if __name__ == '__main__':
     exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
     export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     results = tune.run(
-        PGCopulaTrainer,
+        'PPO',
+        # PGCopulaTrainer,
         name=exp_name,
         stop={'training_iteration': 100},
         local_dir=export_dir,
@@ -46,7 +47,8 @@ if __name__ == '__main__':
             },
             'model': {
                 'custom_model': model_name,
-                'max_seq_len': 20,
+                'use_lstm': True,
+                'max_seq_len': 200,
                 'custom_action_dist': 'gaussian_copula_action_distribution',
                 'custom_options': {
                     'num_layers': 3,
