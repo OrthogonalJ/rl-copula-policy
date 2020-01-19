@@ -6,7 +6,7 @@ from ray.rllib.policy.tf_policy_template import build_tf_policy # pylint: disabl
 from ray.rllib.agents.trainer_template import build_trainer # pylint: disable=import-error
 from ray.rllib.agents.trainer import with_common_config # pylint: disable=import-error
 from ray.rllib.evaluation.postprocessing import Postprocessing # pylint: disable=import-error
-from rl_copula_policy.utils.utils import reward_to_go, ConstantFunctor
+from rl_copula_policy.utils.utils import reward_to_go, ConstantFunctor, shape_list
 from rl_copula_policy.utils.ray_utils import sample_batch_to_columnar_dict, make_seq_mask
 from rl_copula_policy.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
 
@@ -21,7 +21,8 @@ DEFAULT_CONFIG = with_common_config({
 DEFAULT_CUSTOM_OPTIONS = {
     'reward_to_go': True,
     'use_vf_adv': True,
-    'vf_loss_coef': 1.0
+    'vf_loss_coef': 1.0,
+    'policy_loss_logp_coefs': None
 }
 
 def get_custom_option(policy, key):
@@ -29,6 +30,26 @@ def get_custom_option(policy, key):
     if key in DEFAULT_CUSTOM_OPTIONS.keys():
         return custom_options.get(key, DEFAULT_CUSTOM_OPTIONS[key])
     return custom_options[key]
+
+def get_log_prob_coefs(policy, num_terms):
+    coefs = get_custom_option(policy, 'policy_loss_logp_coefs')
+    if coefs is None:
+        coefs = [1] * num_terms
+    # if coefs is not None:
+    #     coefs = coefs
+    #     # coefs = tf.constant(coefs, shape=shape)
+    # else:
+    #     # coefs = tf.ones(shape=shape)
+    assert len(coefs) == num_terms
+    return coefs
+
+def weighted_log_prob(policy, action_dist, actions, advantages):
+    log_prob_terms = action_dist.logp_parts(actions)
+    coefs = get_log_prob_coefs(policy, len(log_prob_terms))
+    total = 0
+    for logp, coef in zip(log_prob_terms, coefs):
+        total = total + (logp * coef)
+    return total * advantages
 
 def policy_gradient_loss(policy, model, dist_class, train_batch):
     # print('COMPUTING PG POLICY LOSS')
@@ -44,7 +65,8 @@ def policy_gradient_loss(policy, model, dist_class, train_batch):
 
     action_dist = dist_class(flat_action_params, model)
 
-    policy_loss = -action_dist.logp(actions) * advantages
+    policy_loss = weighted_log_prob(policy, action_dist, actions, advantages)
+    # policy_loss = -action_dist.logp(actions) * advantages
 
     vf_loss = vf_loss_coef * tf.square(vf_preds - q_values)
 

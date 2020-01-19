@@ -9,6 +9,9 @@ class Categorical(tfp.distributions.Categorical):
     def num_params(self):
         return self._num_classes()
 
+    def flat_sample_size(self):
+        return 1
+
     def quantile(self, quantile):
         num_classes = self._num_classes()
         def next_class_fn(quantile, last_class):
@@ -27,6 +30,9 @@ class Categorical(tfp.distributions.Categorical):
                     next_class_fn(quantile, current_class))
         return next_class_fn(quantile, last_class=0)
     
+    def flat_to_event_shape(self, flat_sample):
+        return flat_sample
+
     def _num_classes(self):
         num_classes = (self.logits if self.logits is not None else self.probs) \
             .get_shape().as_list()[-1]

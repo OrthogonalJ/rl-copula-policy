@@ -46,7 +46,7 @@ def uncollapse_time_from_batch(tensor, seq_len):
     Returns: Reshaped tensor with shape (batches, seq_len, <data dims>...). 
             Assumes that every seq_len batches are independent sequences.
     """
-    print('uncollapse_time_from_batch: (tensor, seq_len):', (tensor, seq_len))
+    # print('uncollapse_time_from_batch: (tensor, seq_len):', (tensor, seq_len))
     shape = tf.shape(tensor)
     tensor_batch_time = tf.reshape(tensor, tf.concat([[-1], [seq_len], shape[1:]], axis=0))
     return tensor_batch_time
@@ -64,7 +64,7 @@ class GlimpseNetModel(RecurrentTFModelV2):
         location_std
     """
     def __init__(self, obs_space, action_space, num_outputs, model_config,
-            name, hidden_size=256, cell_size=64):
+            name):
 
         super(GlimpseNetModel, self).__init__(obs_space, action_space,
                 num_outputs, model_config, name)
@@ -73,26 +73,26 @@ class GlimpseNetModel(RecurrentTFModelV2):
         self.observation_shape = custom_options['obs_shape']
         self.n_patches = custom_options['n_patches']
         self.initial_glimpse_size = custom_options['initial_glimpse_size']
-        self.glimpse_net_activation = tf.nn.relu
+        self.glimpse_net_activation = custom_options.get('glimpse_net_activation', 'relu')
         self.action_dim = custom_options['action_dim']
         self.location_std_value = custom_options.get('location_std', None)
         self.sep_location_net_gradients = custom_options['sep_location_net_gradients']
         
-        self.cell_size = cell_size
+        self.core_net_cell_size = 256
 
         self.image_flat_in = Input(shape=(None, obs_space.shape[0]), name='image_flat_in')
         self.last_location_in = Input(shape=(None, 2, ), name='last_location_in')
-        self.state_in_h = Input(shape=(cell_size, ), name='h_in')
-        self.state_in_c = Input(shape=(cell_size, ), name='c_in')
+        self.state_in_h = Input(shape=(self.core_net_cell_size, ), name='h_in')
+        self.state_in_c = Input(shape=(self.core_net_cell_size, ), name='c_in')
         self.seq_lens_in = Input(shape=(), name='seq_in', dtype=tf.int32)
-        print('seq_lens_in:', self.seq_lens_in)
+        # print('seq_lens_in:', self.seq_lens_in)
         # All sequences are assumed to be padded to this length
         max_seq_len = tf.reduce_max(self.seq_lens_in)
 
         # Removing time dim to match input shape provide in TFModel v1
         image_flat_bf = collapse_time_into_batch(self.image_flat_in)
         last_location_bf = collapse_time_into_batch(self.last_location_in)
-        print('last_location_bf:', last_location_bf)
+        # print('last_location_bf:', last_location_bf)
 
         self.image_flat_bf, self.last_location_bf = image_flat_bf, last_location_bf
         image_bf = Reshape(self.observation_shape)(image_flat_bf)
@@ -100,7 +100,7 @@ class GlimpseNetModel(RecurrentTFModelV2):
         glimpse_out_bf = self.build_glimpse_network(image_bf, last_location_bf, 
                 self.initial_glimpse_size)
         
-        print('glimpse_out_bf', glimpse_out_bf)
+        # print('glimpse_out_bf', glimpse_out_bf)
         glimpse_out = uncollapse_time_from_batch(glimpse_out_bf, max_seq_len)
 
         rnn_out, state_h, state_c = self.build_core_net(glimpse_out, self.seq_lens_in, 
@@ -132,8 +132,8 @@ class GlimpseNetModel(RecurrentTFModelV2):
 
     def get_initial_state(self):
         return [
-            np.zeros(self.cell_size, np.float32),
-            np.zeros(self.cell_size, np.float32),
+            np.zeros(self.core_net_cell_size, np.float32),
+            np.zeros(self.core_net_cell_size, np.float32),
         ]
 
     def value_function(self):
@@ -148,13 +148,13 @@ class GlimpseNetModel(RecurrentTFModelV2):
         }
 
     def _value_function_output(self, core_model_out):
-        output_layer = keras.layers.Dense(64, activation=tf.nn.tanh)(core_model_out)
-        output_layer = keras.layers.Dense(64, activation=tf.nn.tanh)(output_layer)
-        output_layer = keras.layers.Dense(64, activation=tf.nn.tanh)(output_layer) 
+        output_layer = keras.layers.Dense(64, activation=self.glimpse_net_activation)(core_model_out)
+        output_layer = keras.layers.Dense(64, activation=self.glimpse_net_activation)(output_layer)
+        output_layer = keras.layers.Dense(64, activation=self.glimpse_net_activation)(output_layer) 
         output_layer = keras.layers.Dense(1, activation=None)(output_layer)
         output_layer = keras.layers.Reshape([-1])(output_layer)
         return output_layer
-   
+    
     def build_action_net(self, input_tensor, action_dim):
         output_layer = keras.layers.Dense(action_dim, activation=None)
         output_tensor = keras.layers.TimeDistributed(output_layer)(input_tensor)
@@ -163,7 +163,7 @@ class GlimpseNetModel(RecurrentTFModelV2):
     def build_location_net(self, input_tensor):
         output_layer = keras.layers.Dense(2, activation=None)
         means = keras.layers.TimeDistributed(output_layer)(input_tensor)
-        print('means:', means)
+        # print('means:', means)
 
         class LocationDistParametersLayer(keras.layers.Layer):
             def __init__(self, location_std_value, **kwargs):
@@ -199,10 +199,7 @@ class GlimpseNetModel(RecurrentTFModelV2):
                 return [means, logstd_output]
             
             def compute_output_shape(self, input_shape):
-                return [input_shape, self._compute_logstd_shape(input_shape)]
-
-            def _compute_logstd_shape(self, input_shape):
-                return input_shape[:-1] + [2]
+                return [input_shape, input_shape[:-1] + [2]]
 
         params_layer = LocationDistParametersLayer(self.location_std_value)
         means, logstds = params_layer(means)
@@ -210,11 +207,11 @@ class GlimpseNetModel(RecurrentTFModelV2):
     
     def build_core_net(self, glimpse_out, seq_len, state_in_h, state_in_c):
         initial_state = [state_in_h, state_in_c]
-        print('[build_core_net] glimpse_out:', glimpse_out)
-        print('[build_core_net] tf.sequence_mask(seq_len):', tf.sequence_mask(seq_len))
-        print('[build_core_net] initial_state:', initial_state)
+        # print('[build_core_net] glimpse_out:', glimpse_out)
+        # print('[build_core_net] tf.sequence_mask(seq_len):', tf.sequence_mask(seq_len))
+        # print('[build_core_net] initial_state:', initial_state)
 
-        lstm_layer = keras.layers.LSTM(self.cell_size, return_sequences=True, return_state=True,
+        lstm_layer = keras.layers.LSTM(self.core_net_cell_size, return_sequences=True, return_state=True,
                 name='core_net_lstm')
         
         rnn_output, state_h, state_c  = lstm_layer(
@@ -237,8 +234,8 @@ class GlimpseNetModel(RecurrentTFModelV2):
                 initial_glimpse_size, n_patches, observation_shape # config
                 ):
             image, location = input_tensors
-            print('location:', location)
-            print('image:', image)
+            # print('location:', location)
+            # print('image:', image)
             location = tf.clip_by_value(location, -1.0, 1.0)
 
             initial_glimpse_size_tensor = tf.constant([initial_glimpse_size, initial_glimpse_size], 
@@ -249,7 +246,7 @@ class GlimpseNetModel(RecurrentTFModelV2):
             max_patch_radius = int(initial_glimpse_size * (2 ** (n_patches - 1)) / 2)
             image = tf.pad(image, [[0, 0], [max_patch_radius, max_patch_radius], 
                     [max_patch_radius, max_patch_radius], [0, 0]])
-            print('image after padding:', image)
+            # print('image after padding:', image)
 
             base_image_height = observation_shape[0]
             base_image_width = observation_shape[1]
@@ -258,19 +255,19 @@ class GlimpseNetModel(RecurrentTFModelV2):
             location = tf.stack([location_y, location_x], axis=-1)
             # must match the batch shape of image
             location = tf.reshape(location, shape_list(image)[:-3] + [2])
-            print('location after clipping and scaling:', location)
+            # print('location after clipping and scaling:', location)
 
             patches = []
             for i in range(n_patches):
                 patch_size = initial_glimpse_size_tensor * (2 ** i)
                 patch = tf.image.extract_glimpse(image, size=patch_size, offsets=location,
                         normalized=True, centered=True)
-                print('patch {} before resize: {}'.format(i, patch))
+                # print('patch {} before resize: {}'.format(i, patch))
                 patch = tf.image.resize(patch, size=initial_glimpse_size_tensor,
                         method=tf.image.ResizeMethod.BILINEAR)
-                print('patch {} after resize: {}'.format(i, patch))
+                # print('patch {} after resize: {}'.format(i, patch))
                 patches.append(patch)
-            print('[_build_glimpse_sensor_impl] patches:', [p for p in patches])
+            # print('[_build_glimpse_sensor_impl] patches:', [p for p in patches])
             glimpse = tf.stack(patches, axis=-1)
             return glimpse
 
@@ -288,21 +285,21 @@ class GlimpseNetModel(RecurrentTFModelV2):
             initial_glimpse_size(tensor)
         """
         self.glimpse = self.build_glimpse_sensor(image, location, initial_glimpse_size)
-        print('self.glimpse:', self.glimpse)
+        # print('self.glimpse:', self.glimpse)
         glimpse_flat = keras.layers.Flatten()(self.glimpse)
-        print('glimpse_flat:', glimpse_flat)
+        # print('glimpse_flat:', glimpse_flat)
         glimpse_hidden_layer_output = keras.layers.Dense(
                 units=128, activation=self.glimpse_net_activation)(glimpse_flat)
-        print('glimpse_hidden_layer_output:', glimpse_hidden_layer_output)
+        # print('glimpse_hidden_layer_output:', glimpse_hidden_layer_output)
 
         location_hidden_layer_output = keras.layers.Dense(
                 units=128, activation=self.glimpse_net_activation)(location)
-        print('location_hidden_layer_output:', location_hidden_layer_output)
+        # print('location_hidden_layer_output:', location_hidden_layer_output)
 
         combined_layer_output = glimpse_hidden_layer_output + location_hidden_layer_output
-        print('combined_layer_output addition step:', combined_layer_output)
+        # print('combined_layer_output addition step:', combined_layer_output)
         combined_layer_output = keras.layers.Dense(units=128, activation=self.glimpse_net_activation)(combined_layer_output)
-        print('combined_layer_output final dense output:', combined_layer_output)
+        # print('combined_layer_output final dense output:', combined_layer_output)
         return combined_layer_output
 
 ModelCatalog.register_custom_model("glimpse_net_model", GlimpseNetModel)
