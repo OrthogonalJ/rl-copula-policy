@@ -155,34 +155,6 @@ class GlimpseNetModel(RecurrentTFModelV2):
         output_layer = keras.layers.Reshape([-1])(output_layer)
         return output_layer
    
-    def build_action_logprob_graph(self, action_tensor, action_dist_params):
-        # Removing time axis to simplify shape (shape is now (batch*time, action))
-        #action_bf = collapse_time_into_batch(action_tensor)
-        #action_dist_params_bf = collapse_time_into_batch(action_dist_params)
-
-        multinomial_dist = tfp.distributions.Multinomial(total_count=1.0, logits=action_dist_params, 
-                validate_args=True)
-        
-        action_one_hot = tf.one_hot(action_tensor, depth=self.action_dim)
-        action_logprob = multinomial_dist.log_prob(action_one_hot)
-
-        # shape is (batch, time, action)
-        #action_logprob = uncollapse_time_from_batch(action_logprob_bf, tf.shape(action_tensor)[1])
-        return action_logprob
-    
-    def build_location_logprob_graph(self, last_location, location_mean, location_logstd):
-        # Removing time axis to simplify shape (shape is now (batch*time, 2))
-        #last_location_bf = collapse_time_into_batch(location)
-        #location_mean_bf = collapse_time_into_batch(location_mean)
-        normal_dist = tfp.distributions.MultivariateNormalDiag(loc=location_mean, scale_diag=tf.exp(location_logstd), 
-                validate_args=True, allow_nan_stats=False)
-        #normal_dist = tfp.distributions.Normal(loc=location_mean, scale=tf.exp(location_logstd), validate_args=True)
-        log_prob = tf.expand_dims(normal_dist.log_prob(last_location), -1)
-
-        # shape is (batch, time, 2)
-        #log_prob = uncollapse_time_from_batch(log_prob_bf, tf.shape(location)[1])
-        return log_prob
- 
     def build_action_net(self, input_tensor, action_dim):
         output_layer = keras.layers.Dense(action_dim, activation=None)
         output_tensor = keras.layers.TimeDistributed(output_layer)(input_tensor)
