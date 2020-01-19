@@ -69,6 +69,9 @@ class GaussianCopula(tfd.MultivariateNormalTriL):
         # print('gaussian_copula.cdf cdf_vals shape:', cdf_vals.shape)
         return cdf_vals
 
+    def kl_divergence(self, other):
+        return super(GaussianCopula, self).kl_divergence(other)
+
     def cov_matrix(self):
         # Reverse the cholesky decomposition
         return tf.matmul(self._scale_tril, self._scale_tril, transpose_b=True)

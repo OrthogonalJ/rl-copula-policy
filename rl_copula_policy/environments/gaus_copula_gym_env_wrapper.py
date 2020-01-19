@@ -1,12 +1,26 @@
+import types
 import numpy as np
 import gym
 from gym import Env
 from gym.spaces import Dict, Box, Tuple
+
 from rl_copula_policy.utils.gym_space_utils import convert_to_flat_tuple_space
+from rl_copula_policy.utils.utils import is_function_or_lambda
 
 class GausCopulaGymEnvWrapper(Env):
     def __init__(self, config):
-        self._base_env = gym.make(config['env_name'])
+        
+        if 'env' in config:
+            if is_function_or_lambda(config['env']):
+                self._base_env = config['env']
+            else:
+                self._base_env = gym.make(config['env'])
+        elif 'env_name' in config:
+            self._base_env = gym.make(config['env_name'])
+        else:
+            raise Exception('Must set env or env_name')
+        #self._base_env = gym.make(config['env_name'])
+        
         self.observation_space = self._base_env.observation_space
         self._base_action_spaces = convert_to_flat_tuple_space(self._base_env.action_space)
         

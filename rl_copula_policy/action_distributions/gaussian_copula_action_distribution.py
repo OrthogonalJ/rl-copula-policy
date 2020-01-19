@@ -117,7 +117,19 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return self._last_sample_logp
 
     def entropy(self):
-        raise NotImplementedError
+        latent_entropy = self._latent_dist.entropy()
+        total_marginal_entropy = 0
+        for marginal_dist in self._marginal_dists:
+            total_marginal_entropy = total_marginal_entropy + marginal_dist.entropy()
+        total_entropy = latent_entropy + total_marginal_entropy
+        return total_entropy
+        # raise NotImplementedError
+
+    def kl(self, other):
+        divergence = self._latent_dist.kl_divergence(other._latent_dist)
+        for dist, other_dist in zip(self._marginal_dists, other._marginal_dists):
+            divergence = divergence + dist.kl_divergence(other_dist)
+        return divergence
 
     def extract_latent_sample(self, action, seperate_into_list=False):
         if seperate_into_list:
