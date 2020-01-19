@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # exp_name = 'gaussian_copula_v3_{}_{}'.format(model_name, env_name)
     # export_dir = './data/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     seeds = [10, 21, 42]
-    num_iter = 1
+    num_iter = 200
     base_config = {
         'env': GausCopulaGymEnvWrapper,
         # 'output': export_dir,
