@@ -1,7 +1,11 @@
+import types
 import numpy as np
 import scipy as sp
 import tensorflow as tf
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense # pylint: disable=import-error
+
+def is_function_or_lambda(obj):
+    return isinstance(obj, types.LambdaType) or isinstance(obj, types.FunctionType)
 
 def flat_triangular_matrix_size(num_dims):
     """
