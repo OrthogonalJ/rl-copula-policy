@@ -24,10 +24,10 @@ if __name__ == '__main__':
         'log_level': logging.INFO,
         'env': env_name,
         'num_gpus': 0,
-        'num_workers': 7,#47,
+        'num_workers': 1,#47,
         'lr': 0.0005,
-        'train_batch_size': 3997,#10011,
-        'sample_batch_size': 571,#213,
+        'train_batch_size': 1000,#10011,
+        'sample_batch_size': 1000,#213,
         'gamma': 0.99,
         'seed': 10,
         'eager': False,
@@ -48,11 +48,12 @@ if __name__ == '__main__':
         'obs_shape': [config['env_config']['field_size'], config['env_config']['field_size'], 1],
         'action_dim': 3,
         'n_patches': 1,
-        'initial_glimpse_size': 4,
+        'initial_glimpse_size': 8,
         'location_std': None,
         'sep_location_net_gradients': False,
+        'baseline_input_type': 'image',
         # [action loss coef, location loss coef]
-        'policy_loss_logp_coefs': [1.0, 0.7054802006488384]
+        'policy_loss_logp_coefs': [1.0, 1.0]
     }
 
     results = tune.run(
