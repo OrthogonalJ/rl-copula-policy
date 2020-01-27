@@ -1,4 +1,5 @@
-THIS_DIR="$(cd "$(dirname "$0")"; pwd)"
+#THIS_DIR="$(cd "$(dirname "$0")"; pwd)"
+THIS_DIR=`pwd`
 LIB_DIR=$THIS_DIR/lib
 
 PATH_EXTENSION_="$THIS_DIR:$LIB_DIR"
