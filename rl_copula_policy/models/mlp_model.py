@@ -19,6 +19,7 @@ class MLPModel(TFModelV2):
         num_layers = custom_options['num_layers']
         layer_size = custom_options['layer_size']
         activation = custom_options['activation']
+        # activation = self._init_activation(custom_options['activation'])
 
         obs_in = Input(shape=obs_space.shape, name='obs', dtype='float32')
         flat_action_params = make_mlp(obs_in, num_outputs, num_layers=num_layers, 
@@ -38,5 +39,16 @@ class MLPModel(TFModelV2):
     def value_function(self):
         # Note: self._value_out is initialised when forward is called
         return tf.reshape(self._value_out, [-1])
+
+    # def _init_activation(self, activation):
+    #     if isinstance(activation, str):
+    #         return activation
+    #     elif isinstance(activation, dict):
+    #         def _activation_fn(*args):
+    #             layer_factory = activation['factory']
+    #             factory_kwargs = activation['factory_kwargs']
+    #             return layer_factory(*args, **factory_kwargs)
+    #         return _activation_fn
+
 
 ModelCatalog.register_custom_model("mlp_model", MLPModel)

@@ -8,13 +8,13 @@ from ray.tune.logger import DEFAULT_LOGGERS, JsonLogger, CSVLogger # pylint: dis
 from rl_copula_policy.policies.pg_trainer import PGTrainer
 
 # Importing to ensure envs, models, and action distributions are added to tune registry
-import rl_copula_policy.environments.catch_gym_env
+import rl_copula_policy.environments.catch_glimpse_env
 import glimpse_network.models.glimpse_net_model
 import glimpse_network.action_distributions.categorical_gaussian_diag_action_dist
 
 if __name__ == '__main__':
     ray.init(logging_level=logging.INFO)
-    env_name = 'catch_gym_env'
+    env_name = 'catch_glimpse'
     model_name = 'glimpse_net_model'
     exp_name = 'glimse_net_debug_{}_{}'.format(model_name, env_name)
     export_dir = './data/debug/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
@@ -48,12 +48,13 @@ if __name__ == '__main__':
         'obs_shape': [config['env_config']['field_size'], config['env_config']['field_size'], 1],
         'action_dim': 3,
         'n_patches': 1,
-        'initial_glimpse_size': 8,
+        'initial_glimpse_size': 4,
         'location_std': None,
         'sep_location_net_gradients': False,
         'baseline_input_type': 'image',
         # [action loss coef, location loss coef]
-        'policy_loss_logp_coefs': [1.0, 1.0]
+        'policy_loss_logp_coefs': [1.0, 1.0],
+        'glimpse_net_activation': 'tanh'
     }
 
     results = tune.run(
