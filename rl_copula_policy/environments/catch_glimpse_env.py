@@ -5,7 +5,7 @@ from ray.tune import register_env # pylint: disable=import-error
 
 from rl_vis_attention.catch_game.catch_flat_env import CatchFlatEnv # pylint: disable=import-error
 
-class CatchGymEnv(gym.Env):
+class CatchGlimpseEnv(gym.Env):
     """
     Observation Space: Tuple of
         image: Box((w*h,))
@@ -44,4 +44,7 @@ class CatchGymEnv(gym.Env):
         obs = (image, self._next_location)
         return obs, reward, done, info
 
-register_env('catch_gym_env', lambda config: CatchGymEnv(config))
+
+def make_env(config):
+    return CatchGlimpseEnv(config)
+register_env('catch_glimpse', make_env)
