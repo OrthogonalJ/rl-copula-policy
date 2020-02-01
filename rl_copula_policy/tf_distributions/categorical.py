@@ -24,7 +24,16 @@ class Categorical(tfp.distributions.Categorical):
             
             current_class = last_class + 1
             current_class_vec = tf.fill(tf.shape(quantile), current_class)
-            cdf = self.cdf(current_class_vec)
+            
+            cdf = self.cdf(last_class_vec)
+            # cdf = self.cdf(current_class_vec)
+
+            # print_op = tf.print(
+            #     '[print_op] CDF: ', cdf, 
+            #     'quantile:', quantile, 
+            #     'current_class:', current_class_vec, 
+            #     'last_class:', last_class_vec
+            # )
             return tf.where(cdf >= quantile,
                     last_class_vec,
                     next_class_fn(quantile, current_class))
@@ -37,3 +46,22 @@ class Categorical(tfp.distributions.Categorical):
         num_classes = (self.logits if self.logits is not None else self.probs) \
             .get_shape().as_list()[-1]
         return num_classes
+
+
+if __name__ == '__main__':
+    import numpy as np
+    tf = tf.compat.v1
+    tf.disable_v2_behavior()
+    sess = tf.Session()
+    logits = tf.constant(np.log([0.25, 0.25, 0.25, 0.25]))
+    categorical = Categorical(logits=logits)
+    print('prob_params:', sess.run(categorical.probs_parameter()))
+    for i in range(4):
+        print('-' * 10)
+        print('Class {}'.format(i))
+        cdf_val = sess.run(categorical.cdf(i))
+        print('CDF:', cdf_val)
+        quantile = sess.run(categorical.quantile(cdf_val))
+        print('quantile:', quantile)
+        print('-' * 10)
+    
