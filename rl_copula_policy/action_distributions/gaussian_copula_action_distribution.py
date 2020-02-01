@@ -79,25 +79,24 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         if self.inputs.get_shape().ndims > 2:
             # if recurrent
             # add batch and time dims
-            latent_sample = tf.reshape(latent_sample, [1, 1, -1])
+            latent_sample = tf.reshape(latent_sample, [1, 1, self.num_marginals])
         else:
             # if not recurrent
             # add batch dim
-            latent_sample = tf.reshape(latent_sample, [1, -1])
+            latent_sample = tf.reshape(latent_sample, [1, self.num_marginals])
 
-        marginal_cdf_vals = [latent_sample[..., i] for i in range(len(self._marginal_dists))] 
+        # Ensuring that event dim is defined (otherwise self._latent_dist.cdf() fails when run 
+        # in non-eager or eager-tracing mode)
+        # latent_sample = tf.reshape(latent_sample, shape_list(latent_sample)[:-1] + [self.num_marginals])
+        copula_cdf_vals = self._latent_dist.cdf(latent_sample)
+        
+        marginal_cdf_vals = tf.unstack(copula_cdf_vals, axis=-1)
+        # marginal_cdf_vals = [copula_cdf_vals[..., i] for i in range(len(self._marginal_dists))]
         marginal_samples = [dist.quantile(cdf_val) for cdf_val, dist 
                 in zip(marginal_cdf_vals, self._marginal_dists)]
         
-        # Ensuring that event dim is defined (otherwise self._latent_dist.cdf() fails when run 
-        # in non-eager or eager-tracing mode)
-        latent_sample = tf.reshape(latent_sample, shape_list(latent_sample)[:-1] + [self.num_marginals])
-        copula_cdf_vals = self._latent_dist.cdf(latent_sample)
-        # print('copula_cdf_vals shape:', copula_cdf_vals.shape)
-
         self._last_sample_logp = self._logp(latent_sample, marginal_samples)
         result = TupleActions([copula_cdf_vals, latent_sample] + marginal_samples)
-        # print('Sampling result:', [copula_cdf_vals, latent_sample] + marginal_samples)
         return result
 
     def logp(self, action):
@@ -117,6 +116,7 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return self._last_sample_logp
 
     def entropy(self):
+        # FIXME: Not sure if this is correct?
         latent_entropy = self._latent_dist.entropy()
         total_marginal_entropy = 0
         for marginal_dist in self._marginal_dists:
@@ -126,6 +126,7 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         # raise NotImplementedError
 
     def kl(self, other):
+        # FIXME: Not sure if this is correct?
         divergence = self._latent_dist.kl_divergence(other._latent_dist)
         for dist, other_dist in zip(self._marginal_dists, other._marginal_dists):
             divergence = divergence + dist.kl_divergence(other_dist)
@@ -147,6 +148,7 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         #return tf.matmul(self._latent_covariance_tril, self._latent_covariance_tril, transpose_b=True)
     
     def marginal_variances(self, as_list=True):
+        # FIXME: Move this logic into GaussianCopula
         cov_mat = self.covariance_matrix()
         variances = [cov_mat[..., i, i] for i in range(self.num_marginals)]
         if as_list:
@@ -154,12 +156,14 @@ class GaussianCopulaActionDistribution(ActionDistribution):
         return tf.concat(variances, axis=-1)
 
     def marginal_pair_covariances(self):
+        # FIXME: Move into this logic GaussianCopula
         cov_mat = self.covariance_matrix()
         pairs = itertools.combinations(range(self.num_marginals), 2)
         return [( (i, j), cov_mat[..., i, j] ) for i, j in pairs]
     
     def _init_latent_dist(self, flat_action_params, next_unused_idx, num_marginals):
         batch_time_shape = shape_list(flat_action_params)[:-1]
+        # FIXME: Move mean vector creation into GaussianCopula
         latent_means = tf.zeros(shape=batch_time_shape + [num_marginals], dtype=tf.float32)
         # print('latent_means.shape:', latent_means.shape)
 
