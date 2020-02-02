@@ -39,6 +39,7 @@ args = arg_parser.parse_args()
 num_episodes = args.episodes
 checkpoint_file = args.checkpoint
 checkpoint_dir = os.path.dirname(checkpoint_file)
+output_file = args.output_file
 
 ray.init(logging_level=logging.ERROR, local_mode=True)
 
@@ -71,7 +72,7 @@ prep = get_preprocessor(env.observation_space)(env.observation_space)
 # out = cv2.VideoWriter(video_filename, fourcc, fps, (width, height))
 
 import imageio
-out = imageio.get_writer('output.wmv', mode='I', fps=1, quality=10)
+out = imageio.get_writer(output_file, mode='I', fps=1, quality=10)
 # out = imageio.get_writer('output.gif', mode='I', fps=1, loop=1)
 
 for _ in range(num_episodes):
