@@ -12,6 +12,14 @@ class Categorical(tfp.distributions.Categorical):
     def flat_sample_size(self):
         return 1
 
+    # def quantile(self, value):
+    #     num_classes = self._num_classes()
+    #     class_cdfs = [self.cdf(tf.fill(tf.shape(value), k))
+    #             for k in range(num_classes)]
+    #     class_cdfs = tf.stack(class_cdfs, axis=-1)
+    #     quantile = tf.math.argmax(tf.cast(class_cdfs >= value, tf.int32))
+    #     return quantile
+
     def quantile(self, quantile):
         num_classes = self._num_classes()
         def next_class_fn(quantile, last_class):
@@ -24,16 +32,7 @@ class Categorical(tfp.distributions.Categorical):
             
             current_class = last_class + 1
             current_class_vec = tf.fill(tf.shape(quantile), current_class)
-            
             cdf = self.cdf(last_class_vec)
-            # cdf = self.cdf(current_class_vec)
-
-            # print_op = tf.print(
-            #     '[print_op] CDF: ', cdf, 
-            #     'quantile:', quantile, 
-            #     'current_class:', current_class_vec, 
-            #     'last_class:', last_class_vec
-            # )
             return tf.where(cdf >= quantile,
                     last_class_vec,
                     next_class_fn(quantile, current_class))

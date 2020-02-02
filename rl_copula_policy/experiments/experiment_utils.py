@@ -21,7 +21,8 @@ def run_experiment(exp_name, trainable, num_iter, export_dir, config):
         stop={'training_iteration': num_iter},
         local_dir=export_dir,
         loggers=DEFAULT_LOGGERS + (RayLogger,),
-        config=config
+        config=config,
+        checkpoint_at_end=True
     )
     return results
 
@@ -34,10 +35,13 @@ def run_experiment_repeatedly(exp_name, trainable, num_iter, base_export_dir, co
     
     results = []
     for seed in seeds:
-        current_config = copy.deepcopy(config)
-        current_config['seed'] = seed
         current_name = '{}_seed{}'.format(exp_name, seed)
         current_export_dir = os.path.join(base_export_dir, current_name)
+
+        current_config = copy.deepcopy(config)
+        current_config['seed'] = seed
+        current_config['output'] = current_export_dir
+
         exp_results = run_experiment(current_name, trainable, num_iter, 
                 current_export_dir, current_config)
         results.append(exp_results)

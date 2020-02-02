@@ -4,6 +4,10 @@ import scipy as sp
 import tensorflow as tf
 from tensorflow.keras.layers import Dense # pylint: disable=import-error
 
+def has_method(obj, method_name):
+    method = getattr(obj, method_name, None)
+    return callable(method)
+
 def is_function_or_lambda(obj):
     return isinstance(obj, types.LambdaType) or isinstance(obj, types.FunctionType)
 

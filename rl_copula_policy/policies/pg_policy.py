@@ -6,7 +6,7 @@ from ray.rllib.policy.tf_policy_template import build_tf_policy # pylint: disabl
 from ray.rllib.agents.trainer_template import build_trainer # pylint: disable=import-error
 from ray.rllib.agents.trainer import with_common_config # pylint: disable=import-error
 from ray.rllib.evaluation.postprocessing import Postprocessing # pylint: disable=import-error
-from rl_copula_policy.utils.utils import reward_to_go, ConstantFunctor, shape_list
+from rl_copula_policy.utils.utils import reward_to_go, ConstantFunctor, shape_list, has_method
 from rl_copula_policy.utils.ray_utils import sample_batch_to_columnar_dict, make_seq_mask
 from rl_copula_policy.utils.tf_summary_register_mixin import TFSummaryRegisterMixin
 
@@ -103,7 +103,11 @@ def add_advantages(policy, trajectory):
     return trajectory
 
 def extra_action_fetches(policy):
-    return { SampleBatch.VF_PREDS: policy.model.value_function() }
+    fetches = { SampleBatch.VF_PREDS: policy.model.value_function() }
+    if has_method(policy.model, 'extra_compute_action_fetches'):
+        model_fetches = policy.model.extra_compute_action_fetches()
+        fetches.update(model_fetches)
+    return fetches
 
 def stats(policy, train_batch):
     stats =  {
