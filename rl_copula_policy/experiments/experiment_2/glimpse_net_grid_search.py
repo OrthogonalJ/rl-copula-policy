@@ -5,7 +5,7 @@ import logging
 from sklearn.model_selection import ParameterGrid
 import ray  # pylint: disable=import-error
 
-from rl_copula_policy.policies.pg_policy import PGPolicy
+from rl_copula_policy.policies.pg_trainer import PGTrainer
 from rl_copula_policy.experiments.experiment_utils import (
     current_timestamp, run_experiment_repeatedly, merge_configs)
 
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         export_dir = '{}/{}'.format(base_export_dir, exp_name)
 
         run_experiment_repeatedly(exp_name,
-                                  PGCopulaTrainer,
+                                  PGTrainer,
                                   num_iter=num_iter,
                                   base_export_dir=export_dir,
                                   config=exp_config,

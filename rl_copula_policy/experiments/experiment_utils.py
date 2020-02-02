@@ -14,7 +14,11 @@ from rl_copula_policy.utils.ray_logger import RayLogger
 def current_timestamp():
     return datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
-def run_experiment(exp_name, trainable, num_iter, export_dir, config):
+def run_experiment(exp_name, trainable, num_iter, export_dir, config,
+        export_trace=False):
+    if export_trace:
+        config['output'] = export_dir
+
     results = tune.run(
         trainable,
         name=exp_name,
@@ -26,7 +30,8 @@ def run_experiment(exp_name, trainable, num_iter, export_dir, config):
     )
     return results
 
-def run_experiment_repeatedly(exp_name, trainable, num_iter, base_export_dir, config, seeds):
+def run_experiment_repeatedly(exp_name, trainable, num_iter, base_export_dir, 
+        config, seeds, export_trace=False):
     if not os.path.isdir(base_export_dir):
         os.makedirs(base_export_dir)
         # Create empyty flag file to tell consumers that this directory contains
@@ -40,10 +45,9 @@ def run_experiment_repeatedly(exp_name, trainable, num_iter, base_export_dir, co
 
         current_config = copy.deepcopy(config)
         current_config['seed'] = seed
-        current_config['output'] = current_export_dir
 
         exp_results = run_experiment(current_name, trainable, num_iter, 
-                current_export_dir, current_config)
+                current_export_dir, current_config, export_trace)
         results.append(exp_results)
     
     return results
