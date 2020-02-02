@@ -1,10 +1,22 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
+from rl_copula_policy.utils.utils import shape_list
 
 class Categorical(tfp.distributions.Categorical):
     @staticmethod
     def from_flat_tensor(flat_params):
         return Categorical(logits=flat_params)
+
+    def log_prob(self, k):
+        if self.logits_parameter().get_shape().ndims > 1 and (k.get_shape().ndims != (self.logits_parameter().get_shape().ndims - 1)):
+            batch_shape = shape_list(self.logits_parameter())[:-1]
+            k = tf.reshape(k, batch_shape)
+        print('k:', k)
+        print('logits_parameter:', self.logits_parameter())
+        # NOTE: Default implementation seems to cause OOM errors when used with large batch sizes
+        labels = tf.cast(k, tf.int32)
+        return -tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=self.logits_parameter(), labels=labels)
 
     def num_params(self):
         return self._num_classes()

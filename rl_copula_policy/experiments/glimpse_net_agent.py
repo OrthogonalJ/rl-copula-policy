@@ -19,15 +19,15 @@ if __name__ == '__main__':
     exp_name = 'glimse_net_debug_{}_{}'.format(model_name, env_name)
     export_dir = './data/debug/{}-{}'.format(exp_name, datetime.datetime.now().strftime('%Y%m%dT%H%M%S'))
     os.makedirs(export_dir)
-    num_iter = 100
+    num_iter = 20
     config = {
         'log_level': logging.INFO,
         'env': env_name,
-        'num_gpus': 0,
-        'num_workers': 1,#47,
+        'num_gpus': 1,
+        'num_workers': 16,#47,
         'lr': 0.0005,
-        'train_batch_size': 1000,#10011,
-        'sample_batch_size': 1000,#213,
+        'train_batch_size': 20000,#10011,
+        'sample_batch_size': 1250,#213,
         'gamma': 0.99,
         'seed': 10,
         'eager': False,
@@ -35,7 +35,7 @@ if __name__ == '__main__':
             'max_balls': 1,
             'throw_rate': 10,
             'field_size': 8,
-            'catcher_width': 1
+            'catcher_width': 2
         },
         'model': {
             'custom_model': model_name,
@@ -49,7 +49,8 @@ if __name__ == '__main__':
         'action_dim': 3,
         'n_patches': 1,
         'initial_glimpse_size': 4,
-        'location_std': None,
+        'location_std': 0.036,
+        #'location_std': None,
         'sep_location_net_gradients': False,
         'baseline_input_type': 'image',
         # [action loss coef, location loss coef]
@@ -63,5 +64,7 @@ if __name__ == '__main__':
         stop={'training_iteration': num_iter},
         local_dir=export_dir,
         loggers=DEFAULT_LOGGERS,
-        config=config
+        config=config,
+        checkpoint_at_end=True,
+        checkpoint_freq=100
     )
